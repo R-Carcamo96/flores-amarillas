@@ -506,15 +506,28 @@
     /* =========================================================
        Música (opcional; arranca con el primer toque del usuario)
        ========================================================= */
-    const Musica = (() => {
+        const Musica = (() => {
       let audio = null;
-      function iniciar() {
-        if (!CONFIG.musica || audio) return;
+      let sonando = false;
+
+      // Se llama al abrir la página: empieza a descargar el audio
+      function preparar() {
+        if (!CONFIG.musica) return;
         audio = new Audio(CONFIG.musica);
         audio.loop = true;
-        audio.play().catch(() => { /* el navegador puede bloquearla; no rompe nada */ });
+        audio.preload = 'auto';
+        audio.addEventListener('error', () => alert('No se pudo cargar la música: ' + (audio.error && audio.error.code)));
       }
-      return { iniciar };
+
+      // Se llama en cada riego; reintenta hasta que suene
+      function iniciar() {
+        if (!audio || sonando) return;
+        audio.play()
+          .then(() => { sonando = true; })
+          .catch((err) => alert('Reproducción bloqueada: ' + err.name));
+      }
+
+      return { preparar, iniciar };
     })();
 
     /* =========================================================
@@ -582,8 +595,8 @@
         $('#popupMensaje').innerHTML = CONFIG.mensajeFinal;
         btnFlor.textContent = CONFIG.botonPopup;
         btnRegar.textContent = textoBoton(0);
-
         Planta.iniciar();
+        Musica.preparar();
         btnRegar.addEventListener('click', alRegar);
         btnFlor.addEventListener('click', alVerFlor);
         // Tocar la flor ya abierta vuelve a lanzar confeti
